@@ -1,0 +1,236 @@
+1) 
+Create table emp_rank
+(eid int, ename varchar(10), salary int, deptid int);
+
+insert into emp_rank values(1,'a',100,1);
+insert into emp_rank values(2,'b',200,2);
+insert into emp_rank values(3,'c',100,1);
+insert into emp_rank values(4,'d',200,2);
+insert into emp_rank values(5,'e',50,1);
+insert into emp_rank values(6,'f',60,2);
+insert into emp_rank values(7,'g',70,1);
+
+
+select eid, enmae, salary, deptid, row_number() over(order by salary desc) rn,
+rank() over(order by salary desc) rnk, DENSE_RANK() over (order by salary desc) drnk from emp_rank;
+
+
+Select eid,ename,salary,deptid,
+row_number() over(partition by deptid order by salary desc) rn,
+rank() over(partition by deptid order by salary desc) rnk,
+dense_rank() over(partition by deptid order by salary desc) drnk
+From emp_rank;
+
+
+2)
+Create table marks (roll int, sub varchar(5), marks int);
+
+insert into marks values(1,'M',98);
+insert into marks values(1,'E',96);
+insert into marks values(1,'H',99);
+insert into marks values(2,'M',92);
+insert into marks values(2,'E',94);
+
+
+
+Select roll ,
+Case when min(marks)>=35 and avg(marks)>=40  then 'Pass'
+Else 'Fail' end Result
+From marks
+Group by roll;
+
+3) 
+write a query that shows all the name of dept who have no employee working in it using correlated sub query
+Select deptname from dept Where not exists (select 1 from emp where emp.deptid=dept.deptid);
+-- Here each time deptid from outer query will be placed inside subquery and each time subquery get executed first returns true or false and then outer query get served 
+
+4) 
+write a query that shows all the names of dept who have at least one employee working in it using correlated subquery 
+select deptname from dept where exits (select 1 from emp where emp.deptid=dept.deptid);
+
+
+5) 
+write a correlated sub query to return name and salary of all employees whose salary is greater than average salary of all employees
+select ename, salary from emp o where exists (select 1 from emp i having o.salary>avg(i.salary));
+
+6) 
+You can write a query to check if there are any marks greater than 95
+select count(*) from marks having max(marks)>95;
+
+----------------------------------------------------------------------------  VIEW --------------------------------------------------------------------------
+7) 
+-- view defination syntax 
+create view vw_emp_dept 
+as 
+select ename,deptname, salary 
+from emp join dept on emp.deptid = dept.deptid;
+
+-- this how we use view 
+select * from vw_emp_dept;
+
+delete from vw_emp_dept;   -- view or function not updatable because modification affects multiple base tables 
+ 
+update vw_emp_dept set salary = 100, deptname = 'Hr1' where salary = 500;  -- view or function not updatable because modification affects multiple base tables 
+
+Update vw_emp_dept set salary=4444 Where salary=100;   -- allowed modification only one table 
+
+Update vw_emp_dept set deptname='HR' where ename='e';  -- allowed modfication due to action happening on only one table 
+
+create view vw_emp_sal_bonus as select ename, salary basectc, salary*1.1 totalctc from emp;
+
+delete from vw_emp_sal_bonus where ename='a1';
+
+Update vw_emp_sal_bonus  set ename='b' where ename='a1';    -- even if a1 don't exist it will not throw error
+
+insert into emp(ename) values('xyz');
+
+Update vw_emp_sal_bonus  set totalctc=1000 where ename='a1';   -- here totalctc is not original column it is derived field so cannot be modified 
+
+select salary, count(*) from emp group by salary having count(*) > 1;  -- for getting duplicate salary amounts 
+
+Insert into emp values(46,'test',20001,2);
+
+
+
+------------------------- How sql query execution plan works ----------------------
+
+-- Turn on the execution plan display
+SET SHOWPLAN_ALL ON;
+
+-- Execute your query
+SELECT * FROM vw_emp_dept;
+
+-- Turn off the execution plan display
+SET SHOWPLAN_ALL OFF;
+
+
+----------------------------- view defination all info -----------------------------------
+
+set showplan_all on;
+go
+
+select * from vw_emp_dept;
+go
+
+set showplan_all off;
+go
+
+
+--------------------------- info about particular table --------------------------------
+
+EXEC sp_help 'emp';  -- comprehensive description about table 
+
+SELECT 
+    COLUMN_NAME, 
+    DATA_TYPE, 
+    CHARACTER_MAXIMUM_LENGTH, 
+    IS_NULLABLE, 
+    COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'emp';            -- get columns related info 
+
+
+SELECT 
+    TABLE_SCHEMA, 
+    TABLE_NAME, 
+    TABLE_TYPE
+FROM 
+    INFORMATION_SCHEMA.TABLES
+WHERE 
+    TABLE_SCHEMA = SCHEMA_NAME()  -- SCHEMA_NAME() returns the name of the current schema in context
+    AND TABLE_TYPE = 'VIEW';
+
+
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    CHARACTER_MAXIMUM_LENGTH,
+    IS_NULLABLE
+FROM 
+    INFORMATION_SCHEMA.COLUMNS
+WHERE 
+    TABLE_NAME = 'vw_emp_dept'; -- description about provided view or table 
+	
+	
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- calculate running total of salaries , sorted by salary in descending order and then by employee ID. salary greater than current for sorting first like window function and then sum 
+1) select ename, salary,(select sum(salary) from emp i Where i.salary> o.salary Or (i.salary= o.salary andi.eid<=o.eid) ) running_salary_total from emp o Order by salary desc,eid;
+
+2) Select ename,salary,sum(salary) over(order by salary desc Rows between unbounded preceding and current row) running_total_salary from emp;
+
+-- Next highest salary sorted by salary in descending order 
+1) Select ename,salary,sum(salary) over(order by salary desc Rows between 1 following and  1 following) next_high_sal from emp;
+
+2) select ename,salary,(select max(salary) from emp i where i.salary<o.salary or(i.salary = o.salary and i.eid>o.eid)) next_highest_salary from emp o order by salary desc, eid;
+
+-- Next highest salary using lead 
+1) Select ename,salary,lead(salary,1,0) over(order by salary desc ) next_high_sal from emp;
+
+-- previous highest salary using lag 
+2) Select ename,salary,lag(salary,1,0) over(order by salary desc ) prev_high_sal from emp;
+
+-- previous highest salary using other two ways 
+1) Select ename,salary,sum(salary) over(order by salary desc  Rows between 1 preceding and  1 preceding) prev_high_sal  from emp;
+
+2) select ename, salary,(select min(salary) from emp i Where i.salary> o.salary Or (i.salary= o.salary and i.eid<o.eid) ) prev_high_sal from emp o Order by salary desc,eid;
+
+
+--------------------------------------------------------- unions-----------------------------------------------------------------------------------------------------------
+CREATE TABLE custprod (
+    cid INT,
+    pid INT
+);
+
+INSERT INTO custprod (cid, pid) VALUES
+(1, 1),
+(1, 4),
+(1, 6),
+(1, 9),
+(1, 10),
+(2, 2),
+(2, 4),
+(2, 10),
+(2, 18),
+(3, 1),
+(3, 6),
+(3, 9),
+(3, 13),
+(3, 14);
+
+
+output should be :- 
+Num - count of common products between the two customers
+Den - Count of all the products between the two customers
+
+C1	C2	Similarity	Num	Den
+1	2	29%			2	7
+2	3	0%			0	9
+1	3	43%			3	7
+
+
+Select c1,c2,num,den,concat(round(num*100/den,2),'%') as similarity from(
+	Select c1.cid c1, c2.cid c2, count(case when c1.pid=c2.pid then c1.pid else null end) num,
+	count(distinct c1.pid) + count(distinct c2.pid) - count(case when c1.pid=c2.pid then c1.pid else null end) den
+From custprod c1 , custprod c2
+Where c1.cid<c2.cid
+Group by c1.cid,c2.cid) as t;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+

@@ -1,0 +1,375 @@
+SQL Advanced 
+
+----------------------------------- cursors --------------------------------
+
+Cursors -  need - To process a result set one row at a time we need cursors, because SQL is designed to work with set of rows(data).
+
+What is a database cursor ? 
+->  A database cursor is an object that enables traversal over the rows of a result set. It allows you to process individual row returned by a query.
+
+declare @product_name varchar(max),@list_price Decimal;  -- declare two varible name to hold product_name and list_price
+
+declare cursor_product cursor for select product_name, list_price from production.products;  -- and cursor also to hold result set returned by query 
+
+open cursor_product;   -- open cursor and all the result set will be available to cursor now 
+
+fetch next from cursor_product into @product_name, @list_price; -- its like fetching values of first row
+
+while @@FETCH_STATUS = 0     -- checking for next row availability 
+	Begin 
+		print 'Product name : '+@product_name + '------------------list_price of product : '+ cast(@list_price as varchar);   -- perform complex logic here 
+		fetch next from cursor_product into @product_name, @list_price;   -- its like i++ for other language
+	end;
+
+close cursor_product;   -- closing cursor object
+
+deallocate cursor_product;   -- removing its existance
+
+--select * from production.products;
+
+---------------------------------- Stored Procedures -------------------------------------
+
+SQL Server stored procedures are used to group one or more Transact-SQL statements into logical units. The stored procedure is stored as a named object in the SQL Server Database Server.
+
+
+-- creating stored procedure
+create proc uspProductList 
+as 
+Begin 
+	select product_name, list_price from production.products;
+end;
+
+
+-- Executing stored procedure
+exec uspProductList;
+
+
+modify stored procedure
+alter proc uspProductList
+as 
+begin 
+	select product_name, list_price from production.products order by list_price;
+end;
+
+
+
+------------creating stored procedure with one parameter
+create proc uspFindProducts(@min_list_price Decimal)
+as
+Begin 
+	select product_name, list_price from production.products where list_price > @min_list_price order by list_price;
+end;
+
+exec uspFindProducts 300;  -- last one is parameter
+exec uspFindProducts @min_list_price = 300;   -- named paremter better way it is
+
+------------creating stored procedure with one more parameter 
+create proc uspFindProducts(@name varchar(max))
+as 
+begin 
+	Select product_name, list_price from production.products where product_name like '%'+@name+'%';
+end;
+
+exec uspFindProducts trek;
+execute uspFindProducts @name = 'trek';
+
+
+-- Handling exceptions 
+Try catch - Try catch construct allows to gracefully handles excpetion in sql server.
+
+Begin try 
+   -- statements that may cause exception 
+end try 
+Begin catch 
+	-- code to handle exceptions -- functions - Error_line(), Error_message(), Error_procedure(), Error_number(), Error_Serverity(), Error_state()
+end catch 
+
+
+-- Raiserror - generate user defined error messages
+
+RAISERROR ( { message_id | message_text | @local_variable }  
+    { ,severity ,state }  
+    [ ,argument [ ,...n ] ] )  
+    [ WITH option [ ,...n ] ];
+
+
+-- Throw statement
+THROW [ error_number ,  
+        message ,  
+        state ];
+
+
+-- Dynamic Sql 
+
+1) Exec sp_executesql N'select * from production.products';
+
+2) declare @table nvarchar(128), @sql nvarchar(max);
+
+set @table = N'production.products';
+
+set @sql = N'select * from '+@table;
+
+Exec sp_executesql @sql;
+
+3) 
+CREATE OR ALTER PROC usp_query_topn(
+    @table NVARCHAR(128),
+    @topN INT,
+    @byColumn NVARCHAR(128)
+)
+AS
+BEGIN
+    DECLARE 
+        @sql NVARCHAR(MAX),
+        @topNStr NVARCHAR(MAX);
+
+    SET @topNStr  = CAST(@topN as nvarchar(max));
+
+    -- construct SQL
+    SET @sql = N'SELECT TOP ' +  @topNStr  + 
+                ' * FROM ' + @table + 
+                    ' ORDER BY ' + @byColumn + ' DESC';
+    -- execute the SQL
+    EXEC sp_executesql @sql;
+    
+END;
+
+
+EXEC usp_query_topn 
+        'production.products',
+        10, 
+        'list_price';
+
+EXEC usp_query_topn 
+        'production.stocks',
+        10, 
+        'quantity';
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+Normalization - 
+Remove redundant data slowly by sepearting or organizing data in one or multiple tables.
+
+Two types of Redundancies are there - 
+1) Row level - eliminated by usage of primay key 
+2) column level - due to this only columns values are same in some rows and can leads to major problems.  -- 1 nf 
+	a) Insertion Anomaly - Insertion anomalies occur when certain attributes cannot be inserted into the database without the presence of other attributes
+	b) update Anomaly - 
+
+important charcteristics of normalized database - 
+	1) scalar values in each fields 
+	2) absence of redundancy 
+	3) Minimal use of null values
+	4) Minimal loss of information 
+	
+Levels of Normalization  -- based on amount of redundancy in database 
+
+1) First Normalization Form -  A table is consider to be in 1NF if all fields contain only scalar values 
+
+Functional Dependency - 1 set of attributes dependent on another set of attrobutes in table.
+
+
+2) Second Normalization form - 1Nf + all non-key attributes should be functionally dependent on entire primay key 
+
+3) 
+
+
+-------------------------------------------------------- views -------------------------------------------------------
+
+A view is a named query stored in the database catalog that allows you to refer to it later.
+
+1) select object_schema_name(object_id), name from sys.views;   -- query to list all the views with its schema and name of view
+
+2) create view product_info as 
+select product_name, brand_name, list_price from production.products p join production.brands b on p.brand_id = p.brand_id;
+
+select * from product_info;
+
+create view daily_sales as 
+	select Order_date ,oi.product_id, product_name, quantity*oi.list_price sales from sales.orders o join sales.order_items oi on oi.order_id = o.order_id join production.products p on p.product_id = oi.product_id;
+	
+select * from daily_sales;
+
+3) renaming views - sp_renmae @objname = 'schema.viewoldname', @newname = 'newname';
+
+4) getting info about view or mostly listing views 
+	select * from sys.views;   -- can use object_schema_name(object_id) -- to get schema name
+	select * from sys.object where type = 'v';
+	
+	select * from sys.sql_modules;
+	select * from sys.sql_modules where object_id = object_id('viewname');
+	exec sp_helptext 'schema.viewname';
+	select object_defination(object_id('viewname'));
+	
+	
+----- indexed view -- materialized view which stores data physically like a table 
+steps - 1) with schemabinding     2) create a unique clustered index 
+	
+	
+	
+	
+------------------------------------------------------ Triggers -------------------------------------------------------------
+
+SQL Server triggers are special stored procedures that are executed automatically in response to the database object, database, and server events. SQL Server provides three type of triggers:
+1) Data manipulation language (DML) triggers which are invoked automatically in response to INSERT, UPDATE, and DELETE events against tables.
+2) Data definition language (DDL) triggers which fire in response to CREATE, ALTER, and DROP statements. DDL triggers also fire in response to some system stored procedures that perform DDL-like operations.
+3) Logon triggers which fire in response to LOGON events
+
+CREATE TRIGGER [schema_name.]trigger_name
+ON table_name
+AFTER  {[INSERT],[UPDATE],[DELETE]}
+[NOT FOR REPLICATION]
+AS
+{sql_statements}
+
+Instead of trigger - An INSTEAD OF trigger is a trigger that allows you to skip an INSERT, DELETE, or UPDATE statement to a table or a view and execute other statements defined in the trigger instead.
+
+je karaycha(insert,delete,update) te sodun fakt trigger madhla execute kara
+
+CREATE TRIGGER [schema_name.] trigger_name
+ON {table_name | view_name }
+INSTEAD OF {[INSERT] [,] [UPDATE] [,] [DELETE] }
+AS
+{sql_statements}
+
+
+disable triggers - 
+
+disable triggers shema_name.trigger_name on object_name | database | all server
+
+disable all the triggers on a table 
+
+disable trigger all on schemaname.table_name
+
+disable trigger all on database
+
+-- enable trigger
+
+enable trigger shema_name.trigger_name on object_name | database | all server
+
+view trigger defination by querying system modules or list all triggers 
+
+select * from sys.triggers where type = 'tr';
+
+
+-- Drop trigger 
+
+Drop trigger if exists schema_name.trigger_name;
+
+
+-- CTE - allows us to define a temporary named result set available temporarily in execution scope of statements (select, insert, update, delete, merge)
+
+WITH expression_name[(column_name [,...])]
+AS
+    (CTE_definition)
+SQL_statement;
+
+
+with cte_sales_amounts(staff, sales, year) as 
+(
+	select 
+		first_name+' ' +last_name, 
+		sum(quantity * list_price * (1 - discount)),
+		year(order_date)
+	from 
+		sales.orders o inner join sales.order_items i on i.order_id = o.order_id 
+		inner join sales.staffs s on s.staff_id = o.staff_id
+		group by 
+			first_name +' '+last_name, year(order_date)
+)
+
+
+select 
+	staff, 
+	sales
+from 
+	cte_sales_amounts
+where 
+	year = 2018;
+	
+	
+-- Recursive CTE - It references itself -- repeatedly executes , returns subsets of datauntil it returns complete result set 
+
+with cte_numbers(n, weekday)
+as 
+(select 0, DATENAME(DW, 0)
+	union all
+select n+1, DATENAME(DW, n+1)
+from 
+	cte_numbers
+	where n<6
+)
+select weekday from cte_numbers;
+
+
+----------------------------------- Stored Procedure 
+-- SQL server begin end
+
+1) Begin .. end
+Begin 
+	select product_id, product_name from production.products where list_price>100000;
+
+	if @@ROWCOUNT = 0
+		print 'No product with price greater than 10000000 found';
+
+end
+
+2) Nested Begin .. end
+
+Begin 
+	Declare @sales int;
+
+	select @sales = sum(list_price * quantity) from sales.order_items i inner join sales.orders o on o.order_id = i.order_id where year(order_date) = 2018;
+
+	select @sales;
+
+	if @sales>1000000
+	Begin 
+		print 'amount greater than 1 million';
+	end 
+end
+
+3) 
+BEGIN
+    DECLARE @x INT = 10,
+            @y INT = 20;
+
+    IF (@x > 0)
+    BEGIN
+        IF (@x < @y)
+            PRINT 'x > 0 and x < y';
+        ELSE
+            PRINT 'x > 0 and x >= y';
+    END			
+END
+
+4) break 
+declare @counter int = 0;
+
+while @counter <= 5 
+Begin 
+	if @counter =4 
+		break;
+	set @counter = @counter +1;
+	print @counter;
+	
+end
+
+5) 
+DECLARE @counter INT = 0;
+
+WHILE @counter < 5
+BEGIN
+    SET @counter = @counter + 1;
+    IF @counter = 3
+        CONTINUE;	
+    PRINT @counter;
+END
+
+
+
+
+
+

@@ -1,0 +1,367 @@
+1) sqlcmd -s . -e -- to get connection with sql server instance using local instance and windows authentication 
+
+2) select name from sys.databases;
+	go 
+	
+3) select db_name() as current_database;
+	go
+	
+4) use master;
+	go 
+	
+5) select name from sys.tables;
+	go
+	
+6) create database vita;
+	go
+	
+7) use vita;
+	go
+	
+8) create table t1	(c1 int identity primary key, c2 varchar(100), c3 date);
+	go;
+	
+9) select name from sys.tables;
+	go;
+	
+10) exec sp_configure
+
+11) exec sp_help 't1';   -- description of table 
+
+12) select * from t1;
+	go
+
+13) select getDate() as currentDateTime;
+	go
+
+14) select convert(date, getDate()) as Date;
+	go
+	
+15) select convert(time, getDate()) as Time;
+	go
+
+16) insert into t1(c2,c3) values('a','2024-02-01');
+	insert into t1 values ('b',convert(date, getdate()));
+	insert into t1(c2) values('c');
+	go
+	
+17) 
+Select * from t1 where c1=1;
+
+Select * from t1 where c1!=1;
+
+Select * from t1 where c1<>1;
+
+Select * from t1 where c1!=1;
+
+Select * from t1 where c3<>current_date();
+
+
+Select * from t1 where c3 is null;
+
+
+Select * from t1 where c3 is not null;
+
+
+Select * from t1  where c1 in (2,3);
+
+
+Select * from t1  where c1 not in (2,3);
+
+
+Select * from t1 where c1 between 1 and 3;
+
+
+Select * from t1 where c1 not between 1 and 3;
+
+18) Update t1 set c2='John',c3='2022-01-01' where c1=2;
+
+19) dbcc useroptions;
+	go
+	
+20) Begin transaction;
+	go
+	
+	update t1 set c2 = 'ABC', c3 = '2022-01-01' where c1=2;
+	
+	rollback transaction;
+	go
+
+21) Alter table t1 add c4 int;
+	go
+
+	Alter table t1 drop column c4;
+	go
+	
+	alter t1 add c4 int not null; -- error already rows present 
+	go
+	
+	alter table t1 add c4 int default 100 not null;
+	
+	alter table t1 alter column c4 varchar(100);
+	
+22) SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 't1' AND COLUMN_NAME = 'c4';
+
+23) SELECT 
+    name AS ConstraintName,
+    type_desc AS ConstraintType,
+    definition AS ConstraintDefinition
+FROM 
+    sys.default_constraints
+WHERE 
+    parent_object_id = OBJECT_ID('t1') AND
+    parent_column_id = COLUMNPROPERTY(OBJECT_ID('t1'), 'c4', 'ColumnId');
+
+
+24) ALTER TABLE t1 DROP CONSTRAINT DF__t1__c4__37A5467C; -- constraint of default 100 removed 
+
+25) alter table t1 alter column c4 varchar(100);
+	go 
+	
+26) ALTER TABLE t1 ADD CONSTRAINT DF_c4 DEFAULT 'abc' FOR c4;
+
+27) insert into t1(c2) values('d');
+	go 
+	
+28) create table t1_uk(c1 int unique, c2 varchar(100));
+
+29) insert into t1_uk values(1,'a');
+	go
+	
+	insert into t1_uk values(1,'a');   -- error unqiue constraint
+
+30) create table t1_uk_comp(c1 int, c2 int, c3 varchar(100), unique(c1,c2));
+
+Insert into t1_uk_comp values(1,1,'a');
+
+Insert into t1_uk_comp values(1,2,'b');
+
+Insert into t1_uk_comp values(2,2,'c');
+
+31) create table t1_uk_multi(c1 int unique, c2 int unique, c3 varchar(100));
+
+32) create table t1_pk(c1 int primary key,c2 varchar(100));
+
+33) Create table t1_pk_comp (c1 int, c2 int, c3 varchar(100), Primary key(c1,c2));
+
+
+Insert into t1_pk_comp values(1,1,'a');
+
+Insert into t1_pk_comp values(1,2,'b');
+
+Insert into t1_pk_comp values(2,2,'c');
+
+34) create table t_cc(eid int, ename varchar(100), salary int check(salary>1000));
+
+-- below query Fails
+Insert into t_cc values(1,'a',100);
+
+
+-- below both queries Works
+Insert into t_cc values(1,'a',1100);
+Insert into t_cc values(1,'a',null);
+
+35) create table t_nn (id int,name varchar(100) not null);
+insert into t_nn(id) values(1); -- fails
+insert into t_nn values(1,'pro');
+ 
+36)
+create table t_parent(deptid int primary key, deptname varchar(100));
+
+create table t_child(eid int, ename varchar(10), deptid int, constraint fk1 foreign key (deptid) references t_parent(deptid));
+
+--fails
+Insert into t_child values(1,'a',1);
+
+--works
+Insert into t_child values(1,'a',null);
+Insert into t_parent values(1,'HR');
+Insert into t_child values(1,'a',1);
+
+
+
+37) Create table t_def(id int , salary int default 100);
+Insert into t_def values(1,null);
+Insert into t_def(id) values(1);
+
+38) 
+select * from t1_uk;
+Select count(*) from t1_uk;
+Select count(c1) from t1_uk;
+Select count(c2) from t1_uk;
+Select count(distinct c2) from t1_uk;
+Select count(1) from t1_uk;
+Select count(1122121) from t1_uk;
+Select count('adsds') from t1_uk;
+
+39) 
+Select sum(c1) from t1;
+Select avg(c1) from t1;
+
+Insert into t1 values('d',null,100);
+Select avg(c1) from t1;
+Drop table t1;
+
+40) -- joins 
+Create table t1 (c1 int, c2 varchar(10));
+Create table t2 (c1 int, c3 varchar(10));
+
+Insert into t1 values(1,'a'),(2,'b'),(3,'c');
+Insert into t2 values(3,'x'),(4,'y'),(5,'z');
+
+-- cross join 
+select * from t1 cross join t2;
+
+-- inner join 
+select * from t1 join t2 on t1.c1 = t2.c1;
+select * from t1 inner join t2 on t1.c1 = t2.c1;
+
+--left join 
+select * from t1 left join t2 on t1.c1 = t2.c1;
+
+--right join 
+select * from t1 right outer join t2 on t1.c1 = t2.c1;
+
+-- full join 
+select * from t1 full join t2 on t1.c1 = t2.c1;
+
+41) 
+Create table a (id int);
+Create table b (id int);
+
+Insert into a values(1),(2),(3);
+Insert into b values(3),(4),(5);
+
+Select * from a 
+Union
+Select * from b;
+
+Select * from b
+Union
+Select * from a;
+
+Select * from a 
+Union all
+Select * from b;
+
+Select * from b
+Union all
+Select * from a;
+
+Select * from a 
+intersect
+Select * from b;
+
+Select * from a 
+except
+Select * from b;
+
+–- work around for full join but can be done using full join syntax 
+Select * from t1 left outer join t2 
+On t1.c1=t2.c1
+union
+Select * from t1 right outer join t2 
+On t1.c1=t2.c1;
+
+Select * from a where id in (select id from b);
+
+Select * from a where id not in (select id from b);
+
+
+42) 
+create table dept ( deptid int primary key , deptname varchar(10));
+
+create table emp ( eid int  , ename varchar(20) , salary int , deptid int references dept(deptid));
+
+	insert into dept values (1 , 'HR');
+	insert into dept values (2, 'IT');
+	insert into dept values (3, 'Finance'); 
+	insert into dept values(4,'OPR');
+
+   insert into emp values (1,'a',1000,1);
+   insert into emp values (2,'b' , 1023 , 2);
+   insert into emp values (3,'c' , 23 , 3);
+   insert into emp values (4,'d' , 123 , 3);
+   insert into emp values (5,'e' , 102 , 1);
+   insert into emp values (6,'f' , 2023 , 3);
+   insert into emp values (7,'g' , 323 , 1);
+   insert into emp values (8,'h' , 523 , 2);
+   insert into emp values (9,'i' , 136 , 1);
+   insert into emp values (10,'j', 627 , 1);
+   insert into emp values (11,'k' , 978 , 3);
+   insert into emp values (12,'l' , 222 , 1);
+   insert into emp values (13,'m' , 746 , 1);
+   insert into emp values (14,'n' , 3223 , 1);
+   insert into emp values (15,'o' , 1999 , 3);
+   insert into emp values (16,'p' , 821 , 3);
+   insert into emp values (17,'q' , 324 , 1);
+   insert into emp values (18,'r' , 546 , 3);
+   insert into emp values (19,'s' , 717 , 2);
+   insert into emp values (20,'t' , 817 , 2);
+   insert into emp values (21,'u' , 888 , 3);
+   insert into emp values (22,'v' , 9029 , 1);
+   insert into emp values (23,'w' , 20001 , 3);
+   insert into emp values (24,'x' , 28222 , 1);
+   insert into emp values (25,'y' , 19212 , 3);
+   insert into emp values (26,'z' , 12111 , 1);
+   insert into emp values (27,'a1' , 3211 , 1);
+   insert into emp values (28,'a2' , 9238 , 1);
+   insert into emp values (29,'a3' , 653 , 3);
+   insert into emp values (30,'a4' , 44 , 1);
+   insert into emp values (31,'a5' , 3 , 2);
+   insert into emp values (32,'a6' , 16 , 1);
+   insert into emp values (33,'a7' , 14 , 2);
+   insert into emp values (34,'a8' , 845 , 1);
+   insert into emp values (35,'a9' , 135 , 3);
+   insert into emp values (36,'b1' , 1212 , 1);
+   insert into emp values (37,'b2' , 1242 , 2);
+   insert into emp values (38,'b3' , 4212 , 2);
+   insert into emp values (39,'b4' , 4444 , 3);
+   insert into emp values (40,'b5' , 555 , 1);
+   insert into emp values (41,'b6' , 1553 , 3);
+   insert into emp values (42,'b7' , 6432 , 1);
+   insert into emp values (43,'b8' , 4532 , 2);
+   insert into emp values (44,'b9' , 3355 , 1);
+   insert into emp values (45,'c1' , 2324 , 2);
+
+-- list out emp name , department name and salary of each employee in same order 
+select ename, deptname ,salary from emp join dept on emp.deptid = dept.deptid;
+
+-- find the total salary department wise 
+select deptname, sum(salary) total_salary from emp join dept on emp.deptid = dept.deptid group by deptname;
+
+-- find out department with total salary more than 50000
+select deptname, sum(salary) total_salary from emp join dept on emp.deptid = dept.deptid group by deptname having sum(salary)>50000;
+
+-- list employee name , department name and salary by salary in descending order 
+select ename, deptname, salary from emp join dept on emp.deptid = dept.deptid order by salary desc;
+
+-- find the highest salary employee 
+select Top 1 ename, deptname, salary from emp join dept on emp.deptid = dept.deptid order by salary desc;
+
+
+-- find top 5 highest paid salary employee 
+select ename, deptname, salary from emp join dept on emp.deptid = dept.deptid order by salary desc offset 0 rows fetch next 5 rows only;
+
+-- find second highest employee 
+select ename, deptname, salary from emp join dept on emp.deptid = dept.deptid order by salary desc offset 1 rows fetch next 1 rows only;
+
+-- find third highest employee 
+select ename, deptname, salary from emp join dept on emp.deptid = dept.deptid order by salary desc offset 2 rows fetch next 1 rows only;
+
+43)
+
+Create table emp_mgr (eid int, ename varchar(10), mgrid int);
+
+insert into emp_mgr values(1,'a',4);
+insert into emp_mgr values(2,'b',4);
+insert into emp_mgr values(3,'c',4);
+insert into emp_mgr values(4,'d',4);
+insert into emp_mgr values(5,'e',6);
+insert into emp_mgr values(6,'f',6);
+insert into emp_mgr values(7,'g',6);
+
+select e.mgrid, m.ename mgrname,e.eid, e.ename from emp_mgr e join emp_mgr m on e.mgrid=m.eid and e.mgrid <> e.eid;
+
+

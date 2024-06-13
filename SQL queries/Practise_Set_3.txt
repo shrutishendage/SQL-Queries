@@ -1,0 +1,84 @@
+create table account(accno int unique auto_increment , accname varchar(10));
+
+Insert into account(accname) values('a'),('b'),('c');
+
+Insert into account values(10,'d');
+
+Insert into account(accname) values('a'),('b'),('c');
+
+Start transaction;
+Insert into account(accname) values('a'),('b'),('c');
+
+Truncate table account;
+
+-- Department wise top 5 salaries of each employee 
+select * from  emp e join dept d on e.deptid = d.deptid 
+where (select count(e2.salary) from emp e2 
+where e2.salary > e.salary and e2.deptid=e.deptid)<5 
+order by deptname, salary desc;
+
+-- find top five salaries of each department 
+select e1.ename,e1.salary,deptname,count(*) Max_row_count from emp e1 join emp e2 on e1.deptid = e2.deptid and e1.salary<=e2.salary join dept d on d.deptid=e1.deptid group by deptname,e1.ename,e1.salary having count(*)<=5 order by deptname, e1.salary desc;
+
+-- Inbuilt functions - round, ceil, floor
+select round(10345+23254.2434,2);
+Select round(10.3232444);
+Select round(10.3232444,2);
+Select round(10.3232444,-2);
+Select floor(10.9);
+Select floor(-10.9);
+Select ceiling(10.9);
+Select ceiling(-10.9);
+Select 10%4;
+Select abs(-100);
+Select round(48/5,4);
+
+
+-- substring 
+select substring('abcdef',0,5);  -- imagine backslash consumes one charcter as 0
+select charindex('ire','proire sadah ahire');
+select charindex('ire','proire sadah ahire',5);
+select replace('viratkohli','i','a'); 
+select left('abcdef',3);
+Select right('abcdef',5);
+
+-- trim 
+select ltrim('   abcdef');
+select rtrim('   abcdef          ');
+select trim('                     abcdef    
+
+-- more functions
+select concat('proire ','sadah');
+select REVERSE('abcdd');
+select DATALENGTH('prasad');   -- same as length of string 
+
+
+-- find the index of next repeated pattern inside string 
+select 'abcdefdsefef';
+-- first get the index of first 'ef' in string add length of repeating pattern -1 so that i will get the length of whole string including repeating pattern 
+-- secondly create a substring of part after the above created string and search for the repeating pattern inside that and just add this length with the length above that's the answer 
+select charindex('ef','abcdefdsefef')+len('ef')-1+ charindex('ef',substring('abcdefdsefef',charindex('ef','abcdefdsefef')+len('ef'),len('abcdefdsefef')));
+
+
+----------------------------------- Common table Expression and Recurssive CTEs---------------------------------
+
+1)
+with t as (select * from emp) select * from t;
+
+2)
+With t as (Select 1 id ) Select * from t;
+
+3)
+with t as (select 1 id union all  select id+1 from t where id<2000) select * from t OPTION (MAXRECURSION 2000);
+
+4) 
+with t as  (select 1 eid,concat(char(97),1) ename, rand()*100000 salary, 1 deptid
+	union all 
+select eid+1, concat(char((eid%26)+97),eid+1), rand()*100000, (eid%3)+1 deptid from t where eid<32767 )
+select * from t OPTION (MAXRECURSION 32767);
+
+
+
+
+
+
